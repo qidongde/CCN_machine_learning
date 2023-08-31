@@ -14,6 +14,8 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # device = torch.device("cpu")
 data_path = r'./fake_data'
 batch_size = 2
+hidden_size = 16
+num_layers = 1
 mylr = 0.01
 epochs = 100
 
@@ -77,7 +79,8 @@ class EncoderLSTM(nn.Module):
 
 
 def Train():
-    Encoder = EncoderLSTM(25, 16, 1, 1, batch_size).to(device)
+    start_time = time.time()
+    Encoder = EncoderLSTM(25, hidden_size, 1, num_layers, batch_size).to(device)
     myadam_encode = torch.optim.Adam(Encoder.parameters(), lr=mylr)
     mse_loss = nn.MSELoss()
 
@@ -106,9 +109,10 @@ def Train():
                 tmploss = total_loss / total_iter_num * batch_size
                 total_loss_list.append(tmploss)
 
-        if epoch_idx == epochs:
-            torch.save(Encoder.state_dict(), './model/lstm_method_%s.pth' % time.time())
-
+    torch.save(Encoder.state_dict(), './model/lstm_method_%s.pth' % time.time())
+    end_time = time.time()
+    time_consuming = end_time - start_time
+    print(f'time consuming: {time_consuming:.2f}s')
     plt.figure()
     plt.plot(total_loss_list)
     plt.savefig('./RMSE_loss.png')
