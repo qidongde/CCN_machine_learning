@@ -104,7 +104,7 @@ class EncoderLSTM(nn.Module):
         return rr, hn, c
 
     def inithiddenAndC(self):
-        c = hidden = torch.zeros(1, self.batch_size, self.hidden_size, device=device)
+        c = hidden = torch.zeros(num_layers, self.batch_size, self.hidden_size, device=device)
         return hidden, c
 
 
@@ -150,8 +150,8 @@ def Train():
             train_iter_num = train_iter_num + 1
             train_total_loss = train_total_loss + train_loss.item()
 
-        train_avg_loss = train_total_loss / train_iter_num * batch_size
-        test_avg_loss = test_total_loss / test_iter_num * batch_size
+        train_avg_loss = train_total_loss / train_iter_num
+        test_avg_loss = test_total_loss / test_iter_num
         print('Epoch:', epoch_idx, "Train Loss:", train_avg_loss, "|", "Test Loss:", test_avg_loss)
 
         train_avg_loss_list.append(train_avg_loss)
