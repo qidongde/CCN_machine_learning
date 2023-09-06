@@ -1,3 +1,5 @@
+import math
+
 from sklearn.preprocessing import StandardScaler
 import random
 import torch
@@ -14,12 +16,13 @@ import matplotlib.pyplot as plt
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # device = torch.device("cpu")
-ratio = 0.2
+ratio = 0.15
 data_path = r'./dataset/with_target'
 batch_size = 64
 hidden_size = 100
+dropout_ratio = 0.4
 num_layers = 1
-mylr = 0.001
+mylr = 0.005
 epochs = 20
 
 
@@ -35,9 +38,30 @@ def train_test_split_func(full_list, ratio, shuffle=False):
     return train_data_list, test_data_list
 
 
+def time_traj_list():
+    time_traj_df = pd.read_csv('./dataset/time_traj.csv')
+    date_str_list = []
+    date_dic = {}
+    for idx in range(len(time_traj_df)):
+        date_str = str(time_traj_df.iloc[idx][1]) + str(time_traj_df.iloc[idx][2]) + str(time_traj_df.iloc[idx][3])
+        time_str = str(time_traj_df.iloc[idx][-1])
+        date_str_list.append(date_str)
+        date_dic[time_str] = date_str
+    date_str_list = list(set(date_str_list))
+    train_date_list, test_date_list = train_test_split_func(date_str_list, ratio, shuffle=True)
+    return train_date_list, test_date_list, date_dic
+
+
 def my_getdata():
+    train_date_list, test_date_list, date_dic = time_traj_list()
     filenames = os.listdir(data_path)
-    train_data_list, test_data_list = train_test_split_func(filenames, ratio, shuffle=True)
+    train_data_list = []
+    test_data_list = []
+    for file_name in filenames:
+        if date_dic[file_name.split('_')[1].strip('.csv')] in train_date_list:
+            train_data_list.append(file_name)
+        else:
+            test_data_list.append(file_name)
     train_data_pairs = []
     test_data_pairs = []
     transformer = StandardScaler()
@@ -93,14 +117,16 @@ class EncoderLSTM(nn.Module):
         self.num_layers = num_layers
         self.batch_size = batch_size
 
-        self.lstm = nn.LSTM(input_size, self.hidden_size, num_layers, batch_first=True)
+        self.lstm = nn.LSTM(input_size, self.hidden_size, num_layers, batch_first=True, dropout=dropout_ratio)
         self.linear = nn.Linear(self.hidden_size, output_size)
+        self.dropout = nn.Dropout(p=dropout_ratio)
 
     def forward(self, input, hidden, c):
         input = input.view(batch_size, 121, 25)
         rr, (hn, c) = self.lstm(input, (hidden, c))
         rr = rr[:, -1, :]
         rr = self.linear(rr)
+        # rr = self.dropout(rr)
         return rr, hn, c
 
     def inithiddenAndC(self):
@@ -121,7 +147,7 @@ def Train():
 
         train_iter_num = 0
         test_iter_num = 0
-        train_total_loss = 0.0
+        train_total_loss = 0
         test_total_loss = 0
         train_dataset = DataPairsDataset(train_data_pairs)
         test_dataset = DataPairsDataset(test_data_pairs)
@@ -150,12 +176,14 @@ def Train():
             train_iter_num = train_iter_num + 1
             train_total_loss = train_total_loss + train_loss.item()
 
-        train_avg_loss = train_total_loss / train_iter_num
-        test_avg_loss = test_total_loss / test_iter_num
-        print('Epoch:', epoch_idx, "Train Loss:", train_avg_loss, "|", "Test Loss:", test_avg_loss)
+        train_mse_loss = train_total_loss / train_iter_num
+        test_mse_loss = test_total_loss / test_iter_num
 
-        train_avg_loss_list.append(train_avg_loss)
-        test_avg_loss_list.append(test_avg_loss)
+        train_rmse_loss = math.sqrt(train_mse_loss)
+        test_rmse_loss = math.sqrt(test_mse_loss)
+        train_avg_loss_list.append(train_rmse_loss)
+        test_avg_loss_list.append(test_rmse_loss)
+        print('Epoch:', epoch_idx, "Train RMSELoss:", train_rmse_loss, "|", "Test RMSELoss:", test_rmse_loss)
 
     torch.save(Encoder.state_dict(), './model/lstm_method_%s.pth' % time.time())
     pd.DataFrame(train_avg_loss_list).to_csv('train_avg_loss_list.csv')
@@ -169,7 +197,7 @@ def Train():
     plt.legend(loc='best')
     plt.xlabel('Epoch')
     plt.ylabel('Loss')
-    plt.savefig('./LSTM_MSE_loss.png')
+    plt.savefig('./LSTM_RMSE_loss.png')
     plt.show()
 
 
