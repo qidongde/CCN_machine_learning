@@ -1,6 +1,7 @@
 from scipy.io import loadmat
 import pandas as pd
 
+
 filename = 'Converted_data_for_AE'
 raw_data = loadmat(filename)
 
@@ -19,5 +20,11 @@ def mat_to_cvs():
             pd.DataFrame(feature[idx][0]).to_csv('./dataset/with_target/' + filename)
 
 
+def time_traj_form():
+    time_traj_df = pd.DataFrame(time_traj)
+    # print(time_traj_df)
+    time_traj_df.to_csv('./dataset/time_traj.csv')
+
 if __name__ == '__main__':
-    mat_to_cvs()
+    # mat_to_cvs()
+    time_traj_form()
