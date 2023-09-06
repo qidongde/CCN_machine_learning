@@ -16,10 +16,10 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # device = torch.device("cpu")
 ratio = 0.2
 data_path = r'./dataset/with_target'
-batch_size = 4
+batch_size = 64
 hidden_size = 128
 num_layers = 1
-mylr = 0.01
+mylr = 0.001
 epochs = 20
 
 
@@ -114,24 +114,27 @@ def Train():
     myadam_encode = torch.optim.Adam(Encoder.parameters(), lr=mylr)
     mse_loss = nn.MSELoss()
 
-    train_iter_num = 0
-    test_iter_num = 0
-    train_total_loss = 0.0
-    test_total_loss = 0
     train_avg_loss_list = []
     test_avg_loss_list = []
 
-    for epoch_idx in range(epochs):
+    for epoch_idx in range(1, epochs + 1):
+
+        train_iter_num = 0
+        test_iter_num = 0
+        train_total_loss = 0.0
+        test_total_loss = 0
         train_dataset = DataPairsDataset(train_data_pairs)
         test_dataset = DataPairsDataset(test_data_pairs)
         train_dataloader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
         test_dataloader = DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
-        for test_item, (test_x, test_y) in enumerate(test_dataloader, start=1):
-            test_hidden, test_c = Encoder.inithiddenAndC()
-            test_predict, test_hidden, test_c = Encoder(test_x, test_hidden, test_c)
-            test_loss = mse_loss(test_predict.squeeze(), test_y)
-            test_total_loss = test_total_loss + test_loss.item()
-            test_iter_num = test_iter_num + 1
+        with torch.no_grad():
+            for test_item, (test_x, test_y) in enumerate(test_dataloader, start=1):
+                test_hidden, test_c = Encoder.inithiddenAndC()
+                test_predict, test_hidden, test_c = Encoder(test_x, test_hidden, test_c)
+                test_loss = mse_loss(test_predict.squeeze(), test_y)
+
+                test_iter_num = test_iter_num + 1
+                test_total_loss = test_total_loss + test_loss.item()
 
         for train_item, (train_x, train_y) in enumerate(tqdm(train_dataloader), start=1):
             train_hidden, train_c = Encoder.inithiddenAndC()
@@ -147,19 +150,25 @@ def Train():
             train_iter_num = train_iter_num + 1
             train_total_loss = train_total_loss + train_loss.item()
 
-            if (train_iter_num % 100 == 0):
-                train_avg_loss = train_total_loss / train_iter_num * batch_size
-                test_avg_loss = test_total_loss / test_iter_num * batch_size
-                train_avg_loss_list.append(train_avg_loss)
-                test_avg_loss_list.append(test_avg_loss)
+        train_avg_loss = train_total_loss / train_iter_num * batch_size
+        test_avg_loss = test_total_loss / test_iter_num * batch_size
+        print('Epoch:', epoch_idx, "Train Loss:", train_avg_loss, "|", "Test Loss:", test_avg_loss)
+
+        train_avg_loss_list.append(train_avg_loss)
+        test_avg_loss_list.append(test_avg_loss)
 
     torch.save(Encoder.state_dict(), './model/lstm_method_%s.pth' % time.time())
+    pd.DataFrame(train_avg_loss_list).to_csv('train_avg_loss_list.csv')
+    pd.DataFrame(test_avg_loss_list).to_csv('test_avg_loss_list.csv')
     end_time = time.time()
     time_consuming = end_time - start_time
     print(f'time consuming: {time_consuming:.2f}s')
     plt.figure()
     plt.plot(train_avg_loss_list, label='train_loss', color='b')
     plt.plot(test_avg_loss_list, label='test_loss', color='g')
+    plt.legend(loc='best')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
     plt.savefig('./LSTM_MSE_loss.png')
     plt.show()
 
