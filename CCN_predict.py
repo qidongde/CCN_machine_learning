@@ -1,6 +1,7 @@
 import math
+# from scipy.io import loadmat
 
-from sklearn.preprocessing import StandardScaler
+# from sklearn.preprocessing import StandardScaler
 import random
 import torch
 import torch.nn as nn
@@ -22,11 +23,11 @@ batch_size = 64
 hidden_size = 100
 dropout_ratio = 0.4
 num_layers = 1
-mylr = 0.005
-epochs = 20
+mylr = 0.003
+epochs = 25
 
 
-def train_test_split_func(full_list, ratio, shuffle=False):
+def train_test_split_func(full_list, ratio, shuffle=True):
     n_total = len(full_list)
     offset = int(n_total * ratio)
     if n_total == 0 or offset < 1:
@@ -47,12 +48,46 @@ def time_traj_list():
         time_str = str(time_traj_df.iloc[idx][-1])
         date_str_list.append(date_str)
         date_dic[time_str] = date_str
+        if idx % 20000 == 0:
+            print(f'************Reading data number: {idx}************')
     date_str_list = list(set(date_str_list))
     train_date_list, test_date_list = train_test_split_func(date_str_list, ratio, shuffle=True)
     return train_date_list, test_date_list, date_dic
 
 
+def norm_calcu_fuc():
+    # filename = 'Converted_data_for_AE'
+    # raw_data = loadmat(filename)
+    # feature = raw_data['Input_time_series']
+    # np_tmp = feature[0][0]
+    # for i in range(1, feature.size):
+    #     np_tmp = np.concatenate([np_tmp, feature[i][0]], axis=1)
+    #     if i % 2000 == 0:
+    #         print(f'************num:{i}************')
+    # x_mean_value = np.mean(np_tmp, axis=1)
+    # x_std_value = np.std(np_tmp, axis=1)
+    # x_std_value[x_std_value == 0] = 1
+    x_mean_value = [9.06558217e+02, 1.90736501e-01, 3.60037723e+00, 7.23522534e-02,
+                    3.60786419e-01, 1.42427916e-01, 1.62456484e+02, 1.01914306e+05,
+                    4.94778053e-01, 6.09212095e+00, 1.69291848e+01, 2.82171400e+02,
+                    1.13739105e-02, 1.38764537e-02, 4.23811116e-02, 7.34597943e-01,
+                    2.77331227e+02, 3.73565421e-07, 3.78497820e-02, 4.79864031e-03,
+                    3.12594811e-03, 3.53839895e-05, 8.02430340e-04, 1.77910194e+00,
+                    3.20613748e-01]
+
+    x_std_value = [1.37970459e+02, 3.85012200e-01, 6.51165494e-01, 3.94930877e-02,
+                   3.33266285e-01, 2.57680915e-01, 2.44643838e+02, 9.75667198e+02,
+                   1.78784409e-01, 3.35759877e+00, 5.80827754e+00, 1.50634956e+01,
+                   2.88157752e-03, 9.12916032e-02, 4.90390310e-02, 2.04382989e-01,
+                   1.69076187e+01, 1.20099042e-06, 1.42534801e-03, 1.60366323e-03,
+                   1.38708423e-03, 5.02354607e-04, 1.36736020e-03, 1.26844302e+00,
+                   3.21069745e-01]
+
+    return x_mean_value, x_std_value
+
+
 def my_getdata():
+    x_mean_value, x_std_value = norm_calcu_fuc()
     train_date_list, test_date_list, date_dic = time_traj_list()
     filenames = os.listdir(data_path)
     train_data_list = []
@@ -64,24 +99,23 @@ def my_getdata():
             test_data_list.append(file_name)
     train_data_pairs = []
     test_data_pairs = []
-    transformer = StandardScaler()
 
     for file_name in train_data_list:
         train_x = pd.read_csv(data_path + '/' + file_name).iloc[:, 1:]
         # train_y = float(file_name.strip('.csv')[0])
         train_y = float(file_name.split('_')[0])
-
-        train_x = transformer.fit_transform(train_x.transpose()).transpose()
-        train_x_y = [np.array(train_x), train_y]
+        train_x = np.array(train_x)
+        train_x = (train_x.transpose() - x_mean_value) / x_std_value
+        train_x_y = [train_x.transpose(), train_y]
         train_data_pairs.append(train_x_y)
 
     for file_name in test_data_list:
         test_x = pd.read_csv(data_path + '/' + file_name).iloc[:, 1:]
         test_y = float(file_name.split('_')[0])
         # test_y = float(file_name.strip('.csv')[0])
-
-        test_x = transformer.fit_transform(test_x.transpose()).transpose()
-        test_x_y = [np.array(test_x), test_y]
+        test_x = np.array(test_x)
+        test_x = (test_x.transpose() - x_mean_value) / x_std_value
+        test_x_y = [test_x.transpose(), test_y]
         test_data_pairs.append(test_x_y)
     return train_data_pairs, test_data_pairs
 
