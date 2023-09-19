@@ -1,6 +1,9 @@
 from scipy.io import loadmat
 import pandas as pd
+import numpy as np
 
+import time
+import torch
 
 filename = 'Converted_data_for_AE'
 raw_data = loadmat(filename)
@@ -25,6 +28,23 @@ def time_traj_form():
     # print(time_traj_df)
     time_traj_df.to_csv('./dataset/time_traj.csv')
 
+
+def norm_calcu_fuc():
+    np_tmp = feature[0][0]
+    for i in range(1, 30000):
+        np_tmp = np.concatenate([np_tmp, feature[i][0]], axis=1)
+        if i % 2000 == 0:
+            print(f'************num:{i}************')
+    x_mean_value = np.mean(np_tmp, axis=1)
+    x_std_value = np.std(np_tmp, axis=1)
+    x_std_value[x_std_value == 0] = 1
+
+    return x_mean_value, x_std_value
+
+
 if __name__ == '__main__':
     # mat_to_cvs()
-    time_traj_form()
+    # time_traj_form()
+    x_mean_value, x_std_value = norm_calcu_fuc()
+    print(x_mean_value)
+    print(x_std_value)
