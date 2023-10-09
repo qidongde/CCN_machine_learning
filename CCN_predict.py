@@ -20,7 +20,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 ratio = 0.15
 data_path = r'./dataset/with_target'
 batch_size = 64
-hidden_size = 200
+hidden_size = 100
 dropout_ratio = 0.3
 num_layers = 1
 mylr = 0.0002
@@ -214,7 +214,7 @@ class EncoderLSTM(nn.Module):
 
         self.lstm = nn.LSTM(input_size, self.hidden_size, num_layers, batch_first=True)
         self.linear1 = nn.Linear(self.hidden_size, output_size)
-        self.linear2 = nn.Linear(self.hidden_size, output_size)
+        self.linear2 = nn.Linear(121, output_size)
         self.dropout = nn.Dropout(p=dropout_ratio)
 
     def forward(self, input, hidden, c):
@@ -223,8 +223,9 @@ class EncoderLSTM(nn.Module):
         rr = rr[:, -1, :]
         rr = self.dropout(rr)
         rr = self.linear1(rr)
-        hn = hn[-1, :, :]
-        hn = self.linear2(hn)
+        # rr = self.linear2(rr.view(-1, 121))
+        # hn = hn[-1, :, :]
+        # hn = self.linear2(hn)
 
         return rr, hn, c
 
