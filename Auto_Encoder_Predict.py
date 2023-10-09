@@ -15,11 +15,11 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-pretrained_model_path = "model/auto_encoder_pretrain_1695704784.2241461.pth"
+pretrained_model_path = "model/auto_encoder_pretrain_1696804210.4362216.pth"
 ratio = 0.15
 data_path = r'./dataset/with_target'
 batch_size = 64
-hidden_size = 200
+hidden_size = 400
 dropout_ratio = 0.3
 num_layers = 1
 mylr = 0.0002
