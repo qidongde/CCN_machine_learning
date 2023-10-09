@@ -19,7 +19,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 ratio = 0.15
 data_path = r'./dataset'
 batch_size = 64
-hidden_size = 200
+hidden_size = 400
 dropout_ratio = 0.3
 num_layers = 1
 mylr = 0.0002
@@ -191,19 +191,19 @@ class EncoderLSTM(nn.Module):
         self.batch_size = batch_size
 
         self.lstm = nn.LSTM(input_size, self.hidden_size, num_layers, batch_first=True)
-        self.linear1 = nn.Linear(self.hidden_size, output_size)
-        self.linear2 = nn.Linear(self.hidden_size, output_size)
+        self.linear1 = nn.Linear(self.hidden_size, 25)
+        self.linear2 = nn.Linear(1, 121)
         self.dropout = nn.Dropout(p=dropout_ratio)
 
     def forward(self, input, hidden, c):
-        input = input.view(-1, 121, 25)
+        input = input.view(self.batch_size, 121, 25)
         rr, (hn, c) = self.lstm(input, (hidden, c))
         # rr = rr[:, -1, :]
         rr = self.dropout(rr)
         rr = self.linear1(rr)
         rr = rr.view(-1, 25, 121)
-        # hn = hn[-1, :, :]
-        # hn = self.linear2(hn)
+        # rr = rr.view(-1, 25, 1)
+        # rr = self.linear2(rr)
 
         return rr, hn, c
 
@@ -266,12 +266,12 @@ def Train():
         test_rmse_loss = math.sqrt(test_mse_loss)
         train_avg_loss_list.append(train_rmse_loss)
         test_avg_loss_list.append(test_rmse_loss)
-        time.sleep(0.2)
+        # time.sleep(0.2)
         print('Epoch:', epoch_idx, "Train RMSELoss:", train_rmse_loss, "|", "Test RMSELoss:", test_rmse_loss)
 
-    torch.save(Encoder.state_dict(), './model/anto_encoder_pretrain_%s.pth' % time.time())
-    pd.DataFrame(train_avg_loss_list).to_csv('train_avg_loss_list.csv')
-    pd.DataFrame(test_avg_loss_list).to_csv('test_avg_loss_list.csv')
+    torch.save(Encoder.state_dict(), './model/auto_encoder_pretrain_%s.pth' % time.time())
+    pd.DataFrame(train_avg_loss_list).to_csv('ae_pre_train_avg_loss_list.csv')
+    pd.DataFrame(test_avg_loss_list).to_csv('ae_pre_test_avg_loss_list.csv')
 
     plt.figure()
     plt.plot(train_avg_loss_list, label='train_loss', color='b')
@@ -279,7 +279,7 @@ def Train():
     plt.legend(loc='best')
     plt.xlabel('Epoch')
     plt.ylabel('Loss')
-    plt.savefig('./LSTM_RMSE_loss.png')
+    plt.savefig('./AE_PRE_RMSE_loss.png')
     plt.show()
     end_time = time.time()
     time_consuming = end_time - start_time
